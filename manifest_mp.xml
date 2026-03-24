@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+  <iq:application entry="StarkVargApp" id="c5643aff4e0b328c75aed1769cd34217"
+    launcherIcon="@Drawables.LauncherIcon"
+    minSdkVersion="3.2.0"
+    name="@Strings.AppNameMP"
+    type="watch-app"
+    version="1.0.0">
+    <iq:products>
+      <iq:product id="instinct3amoled50mm"/>
+    </iq:products>
+    <iq:permissions>
+      <iq:uses-permission id="BluetoothLowEnergy"/>
+    </iq:permissions>
+    <iq:languages>
+      <iq:language>pol</iq:language>
+      <iq:language>eng</iq:language>
+    </iq:languages>
+  </iq:application>
+</iq:manifest>

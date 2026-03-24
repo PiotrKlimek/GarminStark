@@ -1,0 +1,6 @@
+output/
+developer_key.pem
+developer_key.der
+.env
+source/Version.mc
+source/VinConfig.mc

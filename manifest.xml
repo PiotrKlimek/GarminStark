@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+  <iq:application entry="StarkVargApp" id="a3421feed289106a538cb9547ab12095"
+    launcherIcon="@Drawables.LauncherIcon"
+    minSdkVersion="3.2.0"
+    name="@Strings.AppName"
+    type="watch-app"
+    version="1.0.0">
+    <iq:products>
+      <iq:product id="fenix7pro"/>
+    </iq:products>
+    <iq:permissions>
+      <iq:uses-permission id="BluetoothLowEnergy"/>
+    </iq:permissions>
+    <iq:languages>
+      <iq:language>pol</iq:language>
+      <iq:language>eng</iq:language>
+    </iq:languages>
+  </iq:application>
+</iq:manifest>

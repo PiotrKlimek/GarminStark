@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<strings>
+  <string id="AppName">StarkBattery</string>
+  <string id="AppNameKM">StarkBattery_KM</string>
+  <string id="AppNameMP">StarkBattery_MP</string>
+  <string id="Scanning">Szukam motocykla...</string>
+  <string id="Disconnected">Rozłączono</string>
+  <string id="Searching">Szukam...</string>
+  <string id="NotFound">Nie znaleziono motocykla</string>
+  <string id="RetryHint1">Naciśnij START,</string>
+  <string id="RetryHint2">aby spróbować ponownie</string>
+  <string id="BleUnavailable">BLE niedostępne</string>
+</strings>
