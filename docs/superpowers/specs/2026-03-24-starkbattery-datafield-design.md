@@ -157,15 +157,62 @@ StarkBatteryDFField.compute() [called ~1/s during activity]:
 
 ## UI — data field output
 
-`StarkBatteryDFField` extends `SimpleDataField`. Connect IQ controls layout and font size based on the user's activity screen configuration; the field returns only a string.
+### Iteration 1: full `DataField` with in-field debug panel
 
-| Situation | Displayed value | Max chars |
-|-----------|-----------------|-----------|
-| Connected, fresh data (≤15 min) | `87%` | 4 (`100%`) |
-| Stale data (>15 min old) | `?87%` | 5 (`?100%`) |
-| No data or missing timestamp | `--` | 2 |
+In iteration 1, `StarkBatteryDFField` extends **`WatchUi.DataField`** (not `SimpleDataField`) and implements `onUpdate(dc)` directly. This gives full drawing control and allows a compact debug panel to be shown inside the field — no logs needed for basic diagnostics.
 
-The `?` prefix signals a stale reading without requiring a separate error state. Maximum 5 characters; all three target devices render this correctly in standard data field widths.
+The field is split into two rows:
+
+```
+┌──────────────────────────┐
+│  87%                     │  ← main value, large font
+│  CON · 3m ago · ok       │  ← debug row, tiny font, grey
+└──────────────────────────┘
+```
+
+**Main value row** (top ~60% of field height, `FONT_NUMBER_MEDIUM` or largest that fits):
+
+| Situation | Displayed |
+|-----------|-----------|
+| Fresh SOC (≤15 min) | `87%` |
+| Stale SOC (>15 min) | `?87%` |
+| No data | `--` |
+
+**Debug row** (bottom ~40%, `FONT_SYSTEM_XTINY`, `COLOR_LT_GRAY`):
+
+Format: `<state> · <age> · <last-event>`
+
+| Field | Values |
+|-------|--------|
+| `<state>` | `SCN` scanning \| `CON` connected \| `TO` scan timeout \| `DIS` disconnected \| `ERR` exception |
+| `<age>` | `Xs` / `Xm` since last successful SOC write, or `--` if never |
+| `<last-event>` | last notable thing that happened: `ok` (SOC stored), `no-svc` (service not found), `no-chr` (characteristic not found), `no-ccd` (CCCD not found), `dis` (disconnected before notification), `ex` (exception) |
+
+Examples:
+- `CON · 3m · ok` — connected 3 minutes ago, everything worked
+- `SCN · 12m · ok` — scanning now, last read was 12 min ago
+- `TO · 2m · ok` — scan timed out, last read was 2 min ago
+- `SCN · -- · no-svc` — scanning, never had good data, last failure was "service not found"
+- `ERR · -- · ex` — exception thrown
+
+**State is stored in `Application.Storage`** alongside SOC, so the debug row survives between background sessions and field reloads:
+- `"df_state"` — String: `"SCN"` / `"CON"` / `"TO"` / `"DIS"` / `"ERR"`
+- `"df_last_event"` — String: `"ok"` / `"no-svc"` / `"no-chr"` / `"no-ccd"` / `"dis"` / `"ex"`
+- `"df_soc"` — Number (existing)
+- `"df_soc_ts"` — Number epoch seconds (existing)
+
+`StarkBatteryDFService` writes `df_state` and `df_last_event` at every notable transition (same points as `System.println` log lines). `StarkBatteryDFField.onUpdate()` reads all four keys and renders both rows.
+
+**Drawing notes:**
+- Use `dc.getWidth()` / `dc.getHeight()` for layout — field size varies by device and user configuration.
+- Background: `COLOR_BLACK`, clear with `dc.clear()`.
+- Main value: centered horizontally, vertically centered in top 60%.
+- Debug row: centered horizontally, vertically centered in bottom 40%.
+- If field height < 40px (very small config), skip the debug row entirely and fall back to main value only.
+
+### Iteration 2 (cleanup): simplify to `SimpleDataField`
+
+Once BLE flow is confirmed working on real hardware, `StarkBatteryDFField` is rewritten to extend `SimpleDataField`. The `compute()` method returns only the main value string (`87%`, `?87%`, `--`). The `df_state` and `df_last_event` storage keys are removed. The debug row, `onUpdate()`, and all drawing code are deleted.
 
 ---
 
@@ -227,7 +274,82 @@ Device IDs per variant:
 
 ---
 
-## Out of scope (iteration 1)
+## Debug logging (iteration 1 requirement)
+
+### Rationale
+
+Background service delegates run without a screen and are hard to observe. Rich logging from the first build eliminates guesswork during hardware testing and avoids multiple "flash → wonder what happened → fix blind" cycles.
+
+### Mechanism: `System.println`
+
+Connect IQ's `System.println(value)` writes to the **device log**, readable via:
+- **Garmin Express** → device log export
+- **adb logcat** (Android + sideload) — lines tagged `MonkeyC`
+- **Connect IQ simulator** — console pane
+
+`System.println` is available in both foreground (AppBase, DataField) and background (ServiceDelegate) contexts. It accepts any value; complex objects should be converted with `.toString()` or concatenated inline.
+
+### What to log — `StarkBatteryDFService` (background)
+
+Log every state transition and decision point. Each line must include a short prefix so grep works:
+
+| Event | Log line (example) |
+|-------|--------------------|
+| `onTemporalEvent()` entered | `"[DF] onTemporalEvent start ts=" + startTime` |
+| Defensive teardown executed | `"[DF] teardown: setScanState OFF"` |
+| Scan started | `"[DF] scan started"` |
+| Scan result received | `"[DF] scanResult name=" + (name != null ? name : "null")` |
+| VIN matched | `"[DF] VIN match — pairing"` |
+| VIN not matched (each result) | `"[DF] skip name=" + name` |
+| Scan timeout hit | `"[DF] scan timeout after " + elapsed + "s — stopping"` |
+| Connected | `"[DF] connected"` |
+| Disconnected (before notification) | `"[DF] disconnected before notification — exit"` |
+| Service lookup result | `"[DF] service=" + (service != null ? "found" : "NULL")` |
+| Characteristic lookup result | `"[DF] char=" + (char != null ? "found" : "NULL")` |
+| CCCD descriptor lookup result | `"[DF] cccd=" + (cccd != null ? "found" : "NULL")` |
+| CCCD write sent | `"[DF] CCCD write sent"` |
+| Notification received | `"[DF] notification raw=[" + value[0] + "," + value[1] + "]"` |
+| SOC parsed and stored | `"[DF] soc=" + soc + " ts=" + Time.now().value()` |
+| Exception caught (any) | `"[DF] exception: " + e.getErrorMessage()` |
+
+### What to log — `StarkBatteryDFApp` (foreground, onStart)
+
+| Event | Log line |
+|-------|----------|
+| `onStart()` entered | `"[DF] onStart"` |
+| BLE profile registration attempted | `"[DF] registerProfile"` |
+| BLE profile registration succeeded | `"[DF] registerProfile OK"` |
+| BLE profile registration threw | `"[DF] registerProfile exception: " + e.getErrorMessage()` |
+| Temporal event registered | `"[DF] registerForTemporalEvent 5min"` |
+
+### What to log — `StarkBatteryDFField` (foreground, compute)
+
+`compute()` is called ~1/s — do **not** log on every call. Log only when the displayed value changes:
+
+| Event | Log line |
+|-------|----------|
+| Value changed | `"[DF] compute display=" + displayStr` |
+| Storage returned null | `"[DF] compute soc=null"` (log once, not every second — use a flag) |
+
+### Log-once flag for `compute()`
+
+To avoid flooding the log, `StarkBatteryDFField` must keep a `_lastDisplay` instance variable (initialized to `null`). Only call `System.println` when the new display string differs from `_lastDisplay`, then update `_lastDisplay`.
+
+```monkey-c
+// sketch — exact implementation follows spec
+if (!displayStr.equals(_lastDisplay)) {
+    System.println("[DF] compute display=" + displayStr);
+    _lastDisplay = displayStr;
+}
+```
+
+### No stripping in iteration 1
+
+Debug log lines are **not** removed or conditionally compiled in iteration 1. They remain in the shipped build. Removal is deferred to a future iteration once the BLE flow has been confirmed working on real hardware.
+
+---
+
+
 
 - Real-time BLE connection during activity (persistent connection, higher battery drain)
 - Colour coding in the data field (SimpleDataField returns a string only)
