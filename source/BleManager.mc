@@ -32,14 +32,8 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _splashTimer as Timer.Timer?;
     private var _pendingError as Number;
     private var _powerMode as Number?;
-    private var _bleDebug as String;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
-    // Pre-computed toString() results — used for UUID dispatch in onCharacteristicChanged.
-    // Comparing toString() to toString() avoids format mismatches (case, hyphens) that
-    // occur when comparing toString() output directly to our string constants.
-    private var _socCharUuidStr as String;
-    private var _bikeStatusCharUuidStr as String;
 
     function initialize() {
         BleDelegate.initialize();
@@ -49,13 +43,8 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _splashTimer = null;
         _pendingError = 0;
         _powerMode = null;
-        _bleDebug = "init";
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
-        _socCharUuidStr        = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR).toString();
-        _bikeStatusCharUuidStr = BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR).toString();
-        System.println("[BLE] socCharUuidStr=" + _socCharUuidStr);
-        System.println("[BLE] bikeStatusCharUuidStr=" + _bikeStatusCharUuidStr);
     }
 
     // ── public API ─────────────────────────────────────────────────────────
@@ -70,10 +59,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     function getPowerMode() as Number? {
         return _powerMode;
-    }
-
-    function getBleDebug() as String {
-        return _bleDebug;
     }
 
     function startSplash() as Void {
@@ -147,7 +132,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             while (result != null) {
                 var name = result.getDeviceName();
                 if (name != null && name.equals(STARK_VARG_VIN)) {
-                    System.println("[BLE] VIN match — pairing: " + name);
                     _stopTimer();
                     BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
                     BluetoothLowEnergy.pairDevice(result);
@@ -156,7 +140,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                 result = scanResults.next() as BluetoothLowEnergy.ScanResult?;
             }
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] ERR:11 exception in onScanResults: " + e.getErrorMessage());
             _state = STATE_BLE_UNAVAILABLE;
             _soc = 11; // ERR:11 = crash in onScanResults
             WatchUi.requestUpdate();
@@ -167,21 +150,16 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                                      state as BluetoothLowEnergy.ConnectionState) as Void {
         try {
             if (state == BluetoothLowEnergy.CONNECTION_STATE_CONNECTED) {
-                System.println("[BLE] connected — enabling notifications");
                 _state = STATE_CONNECTED;
-                _bleDebug = "connecting...";
                 _enableNotifications(device);
             } else {
-                System.println("[BLE] disconnected — reconnecting");
                 _state = STATE_RECONNECTING;
                 _powerMode = null;
-                _bleDebug = "disconnected";
                 WatchUi.requestUpdate();
                 _doScan();
                 return;
             }
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] ERR:22 exception in onConnectedStateChanged: " + e.getErrorMessage());
             _state = STATE_BLE_UNAVAILABLE;
             _soc = 22; // ERR:22 = crash in onConnectedStateChanged
         }
@@ -191,38 +169,27 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     function onCharacteristicChanged(char as BluetoothLowEnergy.Characteristic,
                                      value as Lang.ByteArray) as Void {
         try {
+            // UUID dispatch: compare toString() outputs to avoid case/format mismatches.
+            // Uuid.equals() is reference equality in Monkey C — not suitable for value comparison.
             var uuidStr = char.getUuid().toString();
-            if (uuidStr.equals(_socCharUuidStr)) {
+            var socUuidStr = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR).toString();
+            if (uuidStr.equals(socUuidStr)) {
                 if (value.size() >= 1) {
                     var soc = value[0] & 0xFF;
                     if (value.size() >= 2) {
                         soc = soc | ((value[1] & 0xFF) << 8);
                     }
                     _soc = soc > 100 ? 100 : soc;
-                    System.println("[BLE] SOC=" + _soc + "%");
-                }
-            } else if (uuidStr.equals(_bikeStatusCharUuidStr)) {
-                if (value.size() >= 1) {
-                    var pm = value[0] & 0x0F;
-                    System.println("[BLE] BikeStatus byte0=0x" + value[0].format("%02X") + " nibble=" + pm);
-                    _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
-                    if (_powerMode != null) {
-                        _bleDebug = "S:ok P:ok M" + _powerMode.toString();
-                        System.println("[BLE] powerMode=" + _powerMode.toString());
-                    } else {
-                        _bleDebug = "S:ok P:OOR:" + pm.toString();
-                        System.println("[BLE] powerMode=null (out of range 1-5, raw=" + pm.toString() + ")");
-                    }
-                } else {
-                    _bleDebug = "S:ok P:empty";
-                    System.println("[BLE] BikeStatus notification empty — ignored");
                 }
             } else {
-                System.println("[BLE] unknown char UUID: " + uuidStr);
+                // Assume Bike Status characteristic (only other subscribed char)
+                if (value.size() >= 1) {
+                    var pm = value[0] & 0x0F;
+                    _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
+                }
             }
             WatchUi.requestUpdate();
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] ERR:33 exception in onCharacteristicChanged: " + e.getErrorMessage());
             _state = STATE_BLE_UNAVAILABLE;
             _soc = 33; // ERR:33 = crash in onCharacteristicChanged
             WatchUi.requestUpdate();
@@ -232,61 +199,35 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     // ── private ────────────────────────────────────────────────────────────
 
     // Enable notifications by writing 0x0001 to the CCCD descriptor.
-    // UUIDs are passed as hyphenated strings — Connect IQ requires String format
-    // for 128-bit UUIDs; ByteArray casts are rejected at runtime.
     private function _enableNotifications(device as BluetoothLowEnergy.Device) as Void {
         // ── Battery Service — SOC ────────────────────────────────────────────────
         var service;
         try {
             service = device.getService(_serviceUuid);
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting BattService: " + e.getErrorMessage());
-            _bleDebug = "S:ex-svc";
             WatchUi.requestUpdate(); return;
         }
-        if (service == null) {
-            System.println("[BLE] BattService not found");
-            _bleDebug = "S:no-svc";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] BattService found");
+        if (service == null) { WatchUi.requestUpdate(); return; }
 
         var characteristic;
         try {
             characteristic = service.getCharacteristic(_charUuid);
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting SOC char: " + e.getErrorMessage());
-            _bleDebug = "S:ex-chr";
             WatchUi.requestUpdate(); return;
         }
-        if (characteristic == null) {
-            System.println("[BLE] SOC char not found");
-            _bleDebug = "S:no-chr";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] SOC char found");
+        if (characteristic == null) { WatchUi.requestUpdate(); return; }
 
         var cccd;
         try {
             cccd = characteristic.getDescriptor(BluetoothLowEnergy.cccdUuid());
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting SOC CCCD: " + e.getErrorMessage());
-            _bleDebug = "S:ex-ccd";
             WatchUi.requestUpdate(); return;
         }
-        if (cccd == null) {
-            System.println("[BLE] SOC CCCD not found");
-            _bleDebug = "S:no-ccd";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] SOC CCCD found — writing");
+        if (cccd == null) { WatchUi.requestUpdate(); return; }
 
         try {
             cccd.requestWrite([0x01, 0x00]b);
-            System.println("[BLE] SOC CCCD write sent");
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception writing SOC CCCD: " + e.getErrorMessage());
-            _bleDebug = "S:ex-sub";
             WatchUi.requestUpdate();
         }
 
@@ -296,55 +237,30 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             statusService = device.getService(
                 BluetoothLowEnergy.stringToUuid(STATUS_SERVICE_UUID_STR));
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting StatusService: " + e.getErrorMessage());
-            _bleDebug = "S:ok P:ex-svc";
             WatchUi.requestUpdate(); return;
         }
-        if (statusService == null) {
-            System.println("[BLE] StatusService not found — power mode unavailable");
-            _bleDebug = "S:ok P:no-svc";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] StatusService found");
+        if (statusService == null) { WatchUi.requestUpdate(); return; }
 
         var bikeStatusChar;
         try {
             bikeStatusChar = statusService.getCharacteristic(
                 BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR));
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting BikeStatus char: " + e.getErrorMessage());
-            _bleDebug = "S:ok P:ex-chr";
             WatchUi.requestUpdate(); return;
         }
-        if (bikeStatusChar == null) {
-            System.println("[BLE] BikeStatus char not found — power mode unavailable");
-            _bleDebug = "S:ok P:no-chr";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] BikeStatus char found");
+        if (bikeStatusChar == null) { WatchUi.requestUpdate(); return; }
 
         var statusCccd;
         try {
             statusCccd = bikeStatusChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception getting BikeStatus CCCD: " + e.getErrorMessage());
-            _bleDebug = "S:ok P:ex-ccd";
             WatchUi.requestUpdate(); return;
         }
-        if (statusCccd == null) {
-            System.println("[BLE] BikeStatus CCCD not found — power mode unavailable");
-            _bleDebug = "S:ok P:no-ccd";
-            WatchUi.requestUpdate(); return;
-        }
-        System.println("[BLE] BikeStatus CCCD found — writing");
+        if (statusCccd == null) { WatchUi.requestUpdate(); return; }
 
         try {
             statusCccd.requestWrite([0x01, 0x00]b);
-            _bleDebug = "S:ok P:sub...";
-            System.println("[BLE] BikeStatus CCCD write sent — power mode notifications enabled");
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] exception writing BikeStatus CCCD: " + e.getErrorMessage());
-            _bleDebug = "S:ok P:ex-sub";
             WatchUi.requestUpdate();
         }
     }
@@ -365,7 +281,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     // NOT private — must be accessible as a Timer callback via method(:_onScanTimeout)
     function _onScanTimeout() as Void {
-        System.println("[BLE] scan timeout after 30s");
         try {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
         } catch (e instanceof Lang.Exception) {
@@ -376,11 +291,9 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     }
 
     private function _doScan() as Void {
-        System.println("[BLE] starting scan for VIN: " + STARK_VARG_VIN);
         try {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
         } catch (e instanceof Lang.Exception) {
-            System.println("[BLE] scan failed — BLE unavailable: " + e.getErrorMessage());
             _state = STATE_BLE_UNAVAILABLE;
             WatchUi.requestUpdate();
             return;
