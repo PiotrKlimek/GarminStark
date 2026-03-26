@@ -26,9 +26,9 @@ class StarkVargApp extends Application.AppBase {
         }
         try {
             BluetoothLowEnergy.registerProfile({
-                :uuid => BluetoothLowEnergy.stringToUuid(STATUS_SERVICE_UUID_STR),
+                :uuid => BluetoothLowEnergy.stringToUuid(LIVE_SERVICE_UUID_STR),
                 :characteristics => [{
-                    :uuid => BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR),
+                    :uuid => BluetoothLowEnergy.stringToUuid(LIVE_MAP_CHAR_UUID_STR),
                     :descriptors => [BluetoothLowEnergy.cccdUuid()]
                 }]
             });

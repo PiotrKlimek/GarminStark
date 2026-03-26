@@ -12,6 +12,8 @@ const BATT_SERVICE_UUID_STR  = "00006000-5374-6172-4b20-467574757265";
 const BATT_SOC_CHAR_UUID_STR = "00006004-5374-6172-4b20-467574757265";
 const STATUS_SERVICE_UUID_STR   = "00001000-5374-6172-4b20-467574757265";
 const STATUS_BIKE_CHAR_UUID_STR = "00001002-5374-6172-4b20-467574757265";
+const LIVE_SERVICE_UUID_STR     = "00002000-5374-6172-4b20-467574757265";
+const LIVE_MAP_CHAR_UUID_STR    = "00002004-5374-6172-4b20-467574757265";
 
 const SPLASH_DURATION_MS = 2000;
 
@@ -188,17 +190,13 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                     _soc = soc > 100 ? 100 : soc;
                 }
             } else {
-                // Assume Bike Status characteristic (only other subscribed char)
+                // Assume LiveMap characteristic (power mode, 1 byte)
                 if (value.size() >= 1) {
-                    // Full hex dump — show all bytes to locate power mode field
-                    var hex = "";
-                    for (var i = 0; i < value.size(); i++) {
-                        hex = hex + (value[i] & 0xFF).format("%02X");
-                        if (i < value.size() - 1) { hex = hex + "."; }
-                    }
-                    _bleDebug = "[" + value.size() + "]" + hex;
-                    var pm = value[0] & 0x0F; // placeholder
+                    var pm = value[0] & 0xFF;
                     _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
+                    _bleDebug = (_powerMode != null)
+                        ? "P:M" + _powerMode.toString()
+                        : "P:raw=" + pm.toString();
                 } else {
                     _bleDebug = "P:empty";
                 }
@@ -246,47 +244,47 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             WatchUi.requestUpdate();
         }
 
-        // ── Status Service — Bike Status (power mode) ────────────────────────────
-        var statusService;
+        // ── Live Service — LiveMap (power mode 1-5) ──────────────────────────────
+        var liveService;
         try {
-            statusService = device.getService(
-                BluetoothLowEnergy.stringToUuid(STATUS_SERVICE_UUID_STR));
+            liveService = device.getService(
+                BluetoothLowEnergy.stringToUuid(LIVE_SERVICE_UUID_STR));
         } catch (e instanceof Lang.Exception) {
             _bleDebug = "P:ex-svc";
             WatchUi.requestUpdate(); return;
         }
-        if (statusService == null) {
+        if (liveService == null) {
             _bleDebug = "P:no-svc";
             WatchUi.requestUpdate(); return;
         }
 
-        var bikeStatusChar;
+        var liveMapChar;
         try {
-            bikeStatusChar = statusService.getCharacteristic(
-                BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR));
+            liveMapChar = liveService.getCharacteristic(
+                BluetoothLowEnergy.stringToUuid(LIVE_MAP_CHAR_UUID_STR));
         } catch (e instanceof Lang.Exception) {
             _bleDebug = "P:ex-chr";
             WatchUi.requestUpdate(); return;
         }
-        if (bikeStatusChar == null) {
+        if (liveMapChar == null) {
             _bleDebug = "P:no-chr";
             WatchUi.requestUpdate(); return;
         }
 
-        var statusCccd;
+        var liveMapCccd;
         try {
-            statusCccd = bikeStatusChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
+            liveMapCccd = liveMapChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
         } catch (e instanceof Lang.Exception) {
             _bleDebug = "P:ex-ccd";
             WatchUi.requestUpdate(); return;
         }
-        if (statusCccd == null) {
+        if (liveMapCccd == null) {
             _bleDebug = "P:no-ccd";
             WatchUi.requestUpdate(); return;
         }
 
         try {
-            statusCccd.requestWrite([0x01, 0x00]b);
+            liveMapCccd.requestWrite([0x01, 0x00]b);
             _bleDebug = "P:sub";
         } catch (e instanceof Lang.Exception) {
             _bleDebug = "P:ex-sub";
