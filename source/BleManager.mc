@@ -169,12 +169,20 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     function onCharacteristicChanged(char as BluetoothLowEnergy.Characteristic,
                                      value as Lang.ByteArray) as Void {
         try {
-            if (value.size() >= 1) {
-                var soc = value[0] & 0xFF;
-                if (value.size() >= 2) {
-                    soc = soc | ((value[1] & 0xFF) << 8); // uint16 little-endian
+            var uuidStr = char.getUuid().toString();
+            if (uuidStr.equals(BATT_SOC_CHAR_UUID_STR)) {
+                if (value.size() >= 1) {
+                    var soc = value[0] & 0xFF;
+                    if (value.size() >= 2) {
+                        soc = soc | ((value[1] & 0xFF) << 8);
+                    }
+                    _soc = soc > 100 ? 100 : soc;
                 }
-                _soc = soc > 100 ? 100 : soc;
+            } else if (uuidStr.equals(STATUS_BIKE_CHAR_UUID_STR)) {
+                if (value.size() >= 1) {
+                    var pm = value[0] & 0x0F;
+                    _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
+                }
             }
             WatchUi.requestUpdate();
         } catch (e instanceof Lang.Exception) {
