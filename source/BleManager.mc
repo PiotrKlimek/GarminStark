@@ -10,6 +10,8 @@ const SCAN_TIMEOUT_MS = 30000;
 // UUID strings — hyphenated format required by stringToUuid()
 const BATT_SERVICE_UUID_STR  = "00006000-5374-6172-4b20-467574757265";
 const BATT_SOC_CHAR_UUID_STR = "00006004-5374-6172-4b20-467574757265";
+const STATUS_SERVICE_UUID_STR   = "00001000-5374-6172-4b20-467574757265";
+const STATUS_BIKE_CHAR_UUID_STR = "00001002-5374-6172-4b20-467574757265";
 
 const SPLASH_DURATION_MS = 2000;
 
@@ -29,6 +31,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _timer as Timer.Timer?;
     private var _splashTimer as Timer.Timer?;
     private var _pendingError as Number;
+    private var _powerMode as Number?;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
 
@@ -39,6 +42,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _timer = null;
         _splashTimer = null;
         _pendingError = 0;
+        _powerMode = null;
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
     }
@@ -51,6 +55,10 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     function getSoc() as Number {
         return _soc;
+    }
+
+    function getPowerMode() as Number? {
+        return _powerMode;
     }
 
     function startSplash() as Void {
@@ -104,10 +112,12 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         if (_state != STATE_CONNECTED) {
             _state = STATE_CONNECTED;
             _soc = 75;
+            _powerMode = 3;
         } else if (_soc == 75) {
             _soc = 20; // test red bar
         } else if (_soc == 20) {
             _state = STATE_RECONNECTING;
+            _powerMode = null;
         } else {
             _state = STATE_TIMEOUT;
         }
@@ -144,6 +154,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                 _enableNotifications(device);
             } else {
                 _state = STATE_RECONNECTING;
+                _powerMode = null;
                 WatchUi.requestUpdate();
                 _doScan();
                 return;
