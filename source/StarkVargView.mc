@@ -33,6 +33,15 @@ class StarkVargView extends WatchUi.View {
 
         var state = _bleManager.getState();
 
+        // Debug bar — bottom of screen, all states except splash
+        // Format: "S:ok P:sub..." / "S:ok P:ok M3" / "S:ok P:no-svc" etc.
+        if (state != STATE_SPLASH) {
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h - 12, Graphics.FONT_SYSTEM_XTINY,
+                        _bleManager.getBleDebug(),
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+
         // Splash screen
         if (state == STATE_SPLASH) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
