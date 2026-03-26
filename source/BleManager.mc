@@ -190,15 +190,14 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             } else {
                 // Assume Bike Status characteristic (only other subscribed char)
                 if (value.size() >= 1) {
-                    var b0 = value[0] & 0xFF;
-                    var b1 = (value.size() >= 2) ? (value[1] & 0xFF) : 0;
-                    // Show all 4 nibbles from bytes 0-1: n0=b0lo n1=b0hi n2=b1lo n3=b1hi
-                    // One of these should equal the current ride mode (1-5)
-                    _bleDebug = "n:" + (b0 & 0x0F).toString()
-                        + "/" + ((b0 >> 4) & 0x0F).toString()
-                        + "/" + (b1 & 0x0F).toString()
-                        + "/" + ((b1 >> 4) & 0x0F).toString();
-                    var pm = b0 & 0x0F; // placeholder until we find correct field
+                    // Full hex dump — show all bytes to locate power mode field
+                    var hex = "";
+                    for (var i = 0; i < value.size(); i++) {
+                        hex = hex + (value[i] & 0xFF).format("%02X");
+                        if (i < value.size() - 1) { hex = hex + "."; }
+                    }
+                    _bleDebug = "[" + value.size() + "]" + hex;
+                    var pm = value[0] & 0x0F; // placeholder
                     _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
                 } else {
                     _bleDebug = "P:empty";
