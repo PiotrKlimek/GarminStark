@@ -192,9 +192,13 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                 if (value.size() >= 1) {
                     var pm = value[0] & 0x0F;
                     _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
-                    _bleDebug = (_powerMode != null)
-                        ? "P:M" + _powerMode.toString()
-                        : "P:raw=" + pm.toString();
+                    // Hex dump: show up to 4 bytes so we can find power mode encoding
+                    var hex = "";
+                    var limit = value.size() < 4 ? value.size() : 4;
+                    for (var i = 0; i < limit; i++) {
+                        hex = hex + (value[i] & 0xFF).format("%02X");
+                    }
+                    _bleDebug = "P[" + value.size() + "]:" + hex;
                 } else {
                     _bleDebug = "P:empty";
                 }
