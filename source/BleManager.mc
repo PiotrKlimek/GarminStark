@@ -35,6 +35,11 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _bleDebug as String;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
+    // Pre-computed toString() results — used for UUID dispatch in onCharacteristicChanged.
+    // Comparing toString() to toString() avoids format mismatches (case, hyphens) that
+    // occur when comparing toString() output directly to our string constants.
+    private var _socCharUuidStr as String;
+    private var _bikeStatusCharUuidStr as String;
 
     function initialize() {
         BleDelegate.initialize();
@@ -47,6 +52,10 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _bleDebug = "init";
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
+        _socCharUuidStr        = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR).toString();
+        _bikeStatusCharUuidStr = BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR).toString();
+        System.println("[BLE] socCharUuidStr=" + _socCharUuidStr);
+        System.println("[BLE] bikeStatusCharUuidStr=" + _bikeStatusCharUuidStr);
     }
 
     // ── public API ─────────────────────────────────────────────────────────
@@ -183,7 +192,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                                      value as Lang.ByteArray) as Void {
         try {
             var uuidStr = char.getUuid().toString();
-            if (uuidStr.equals(BATT_SOC_CHAR_UUID_STR)) {
+            if (uuidStr.equals(_socCharUuidStr)) {
                 if (value.size() >= 1) {
                     var soc = value[0] & 0xFF;
                     if (value.size() >= 2) {
@@ -192,7 +201,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                     _soc = soc > 100 ? 100 : soc;
                     System.println("[BLE] SOC=" + _soc + "%");
                 }
-            } else if (uuidStr.equals(STATUS_BIKE_CHAR_UUID_STR)) {
+            } else if (uuidStr.equals(_bikeStatusCharUuidStr)) {
                 if (value.size() >= 1) {
                     var pm = value[0] & 0x0F;
                     System.println("[BLE] BikeStatus byte0=0x" + value[0].format("%02X") + " nibble=" + pm);
