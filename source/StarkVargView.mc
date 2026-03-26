@@ -100,6 +100,15 @@ class StarkVargView extends WatchUi.View {
                         modeStr,
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
+            // Power mode debug — shows subscription state and raw values
+            var dbg = _bleManager.getBleDebug();
+            if (!dbg.equals("")) {
+                dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, cy + 88, Graphics.FONT_TINY,
+                            dbg,
+                            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            }
+
         } else if (state == STATE_RECONNECTING) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, cy - 15, Graphics.FONT_MEDIUM,

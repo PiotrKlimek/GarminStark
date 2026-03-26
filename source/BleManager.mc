@@ -32,6 +32,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _splashTimer as Timer.Timer?;
     private var _pendingError as Number;
     private var _powerMode as Number?;
+    private var _bleDebug as String;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
 
@@ -43,6 +44,7 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _splashTimer = null;
         _pendingError = 0;
         _powerMode = null;
+        _bleDebug = "";
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
     }
@@ -59,6 +61,10 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     function getPowerMode() as Number? {
         return _powerMode;
+    }
+
+    function getBleDebug() as String {
+        return _bleDebug;
     }
 
     function startSplash() as Void {
@@ -186,6 +192,11 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                 if (value.size() >= 1) {
                     var pm = value[0] & 0x0F;
                     _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
+                    _bleDebug = (_powerMode != null)
+                        ? "P:M" + _powerMode.toString()
+                        : "P:raw=" + pm.toString();
+                } else {
+                    _bleDebug = "P:empty";
                 }
             }
             WatchUi.requestUpdate();
@@ -237,30 +248,44 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             statusService = device.getService(
                 BluetoothLowEnergy.stringToUuid(STATUS_SERVICE_UUID_STR));
         } catch (e instanceof Lang.Exception) {
+            _bleDebug = "P:ex-svc";
             WatchUi.requestUpdate(); return;
         }
-        if (statusService == null) { WatchUi.requestUpdate(); return; }
+        if (statusService == null) {
+            _bleDebug = "P:no-svc";
+            WatchUi.requestUpdate(); return;
+        }
 
         var bikeStatusChar;
         try {
             bikeStatusChar = statusService.getCharacteristic(
                 BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR));
         } catch (e instanceof Lang.Exception) {
+            _bleDebug = "P:ex-chr";
             WatchUi.requestUpdate(); return;
         }
-        if (bikeStatusChar == null) { WatchUi.requestUpdate(); return; }
+        if (bikeStatusChar == null) {
+            _bleDebug = "P:no-chr";
+            WatchUi.requestUpdate(); return;
+        }
 
         var statusCccd;
         try {
             statusCccd = bikeStatusChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
         } catch (e instanceof Lang.Exception) {
+            _bleDebug = "P:ex-ccd";
             WatchUi.requestUpdate(); return;
         }
-        if (statusCccd == null) { WatchUi.requestUpdate(); return; }
+        if (statusCccd == null) {
+            _bleDebug = "P:no-ccd";
+            WatchUi.requestUpdate(); return;
+        }
 
         try {
             statusCccd.requestWrite([0x01, 0x00]b);
+            _bleDebug = "P:sub";
         } catch (e instanceof Lang.Exception) {
+            _bleDebug = "P:ex-sub";
             WatchUi.requestUpdate();
         }
     }
