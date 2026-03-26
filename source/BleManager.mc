@@ -227,6 +227,39 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         } catch (e instanceof Lang.Exception) {
             WatchUi.requestUpdate();
         }
+
+        // ── Status Service — Bike Status (power mode) ────────────────────────────
+        var statusService;
+        try {
+            statusService = device.getService(
+                BluetoothLowEnergy.stringToUuid(STATUS_SERVICE_UUID_STR));
+        } catch (e instanceof Lang.Exception) {
+            WatchUi.requestUpdate(); return;
+        }
+        if (statusService == null) { WatchUi.requestUpdate(); return; }
+
+        var bikeStatusChar;
+        try {
+            bikeStatusChar = statusService.getCharacteristic(
+                BluetoothLowEnergy.stringToUuid(STATUS_BIKE_CHAR_UUID_STR));
+        } catch (e instanceof Lang.Exception) {
+            WatchUi.requestUpdate(); return;
+        }
+        if (bikeStatusChar == null) { WatchUi.requestUpdate(); return; }
+
+        var statusCccd;
+        try {
+            statusCccd = bikeStatusChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
+        } catch (e instanceof Lang.Exception) {
+            WatchUi.requestUpdate(); return;
+        }
+        if (statusCccd == null) { WatchUi.requestUpdate(); return; }
+
+        try {
+            statusCccd.requestWrite([0x01, 0x00]b);
+        } catch (e instanceof Lang.Exception) {
+            WatchUi.requestUpdate();
+        }
     }
 
     private function _startTimer() as Void {
