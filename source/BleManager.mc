@@ -30,7 +30,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _soc as Number;
     private var _timer as Timer.Timer?;
     private var _splashTimer as Timer.Timer?;
-    private var _pendingError as Number;
     private var _powerMode as Number?;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
@@ -41,7 +40,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _soc = 0;
         _timer = null;
         _splashTimer = null;
-        _pendingError = 0;
         _powerMode = null;
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
@@ -74,23 +72,13 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     function _onSplashDone() as Void {
         _splashTimer = null;
-        if (_pendingError != 0) {
-            _state = STATE_BLE_UNAVAILABLE;
-            _soc = _pendingError;
-        } else {
-            startScan();
-        }
+        startScan();
         WatchUi.requestUpdate();
     }
 
     function setBleUnavailable() as Void {
         _state = STATE_BLE_UNAVAILABLE;
-        _soc = 0;
         WatchUi.requestUpdate();
-    }
-
-    function setDebugState(code as Number) as Void {
-        _pendingError = code;
     }
 
     function stop() as Void {
@@ -100,28 +88,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         } catch (e instanceof Lang.Exception) {
             // BLE unavailable — nothing to stop
         }
-    }
-
-    // ── test mode (no motorcycle needed) ───────────────────────────────────
-
-    // Call from delegate onMenu() to simulate a connected motorcycle.
-    // Each call cycles: CONNECTED(75%) → CONNECTED(20%) → RECONNECTING → TIMEOUT → back to scan.
-    function simulateNextState() as Void {
-        _stopTimer();
-        try { BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF); } catch (e instanceof Lang.Exception) {}
-        if (_state != STATE_CONNECTED) {
-            _state = STATE_CONNECTED;
-            _soc = 75;
-            _powerMode = 3;
-        } else if (_soc == 75) {
-            _soc = 20; // test red bar
-        } else if (_soc == 20) {
-            _state = STATE_RECONNECTING;
-            _powerMode = null;
-        } else {
-            _state = STATE_TIMEOUT;
-        }
-        WatchUi.requestUpdate();
     }
 
     // ── BleDelegate callbacks ───────────────────────────────────────────────
@@ -141,7 +107,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             }
         } catch (e instanceof Lang.Exception) {
             _state = STATE_BLE_UNAVAILABLE;
-            _soc = 11; // ERR:11 = crash in onScanResults
             WatchUi.requestUpdate();
         }
     }
@@ -161,7 +126,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             }
         } catch (e instanceof Lang.Exception) {
             _state = STATE_BLE_UNAVAILABLE;
-            _soc = 22; // ERR:22 = crash in onConnectedStateChanged
         }
         WatchUi.requestUpdate();
     }
@@ -191,7 +155,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             WatchUi.requestUpdate();
         } catch (e instanceof Lang.Exception) {
             _state = STATE_BLE_UNAVAILABLE;
-            _soc = 33; // ERR:33 = crash in onCharacteristicChanged
             WatchUi.requestUpdate();
         }
     }

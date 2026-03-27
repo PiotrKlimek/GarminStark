@@ -44,15 +44,11 @@ class StarkVargView extends WatchUi.View {
             return;
         }
 
-        // BLE unavailable — show error + debug code
+        // BLE unavailable
         if (state == STATE_BLE_UNAVAILABLE) {
             dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy - 15, Graphics.FONT_MEDIUM,
+            dc.drawText(cx, cy, Graphics.FONT_MEDIUM,
                         WatchUi.loadResource(Rez.Strings.BleUnavailable),
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + 20, Graphics.FONT_SMALL,
-                        "ERR:" + _bleManager.getSoc().toString(),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;
         }

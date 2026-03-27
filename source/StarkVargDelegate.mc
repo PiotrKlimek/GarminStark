@@ -22,10 +22,4 @@ class StarkVargDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    // Long press UP/MENU: cycle through states for UI testing without a motorcycle.
-    // CONNECTED(75%) → CONNECTED(20%) → RECONNECTING → TIMEOUT → (repeat)
-    function onMenu() as Boolean {
-        _bleManager.simulateNextState();
-        return true;
-    }
 }

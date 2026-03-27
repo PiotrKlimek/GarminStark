@@ -38,8 +38,7 @@ class StarkVargApp extends Application.AppBase {
         try {
             BluetoothLowEnergy.setDelegate(bleManager);
         } catch (e instanceof Lang.Exception) {
-            bleManager.setDebugState(2);
-            bleManager.startSplash();
+            bleManager.setBleUnavailable();
             return;
         }
         bleManager.startSplash();
