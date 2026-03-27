@@ -10,10 +10,8 @@ const SCAN_TIMEOUT_MS = 30000;
 // UUID strings — hyphenated format required by stringToUuid()
 const BATT_SERVICE_UUID_STR  = "00006000-5374-6172-4b20-467574757265";
 const BATT_SOC_CHAR_UUID_STR = "00006004-5374-6172-4b20-467574757265";
-const STATUS_SERVICE_UUID_STR   = "00001000-5374-6172-4b20-467574757265";
-const STATUS_BIKE_CHAR_UUID_STR = "00001002-5374-6172-4b20-467574757265";
-const LIVE_SERVICE_UUID_STR     = "00002000-5374-6172-4b20-467574757265";
-const LIVE_MAP_CHAR_UUID_STR    = "00002004-5374-6172-4b20-467574757265";
+const LIVE_SERVICE_UUID_STR  = "00002000-5374-6172-4b20-467574757265";
+const LIVE_MAP_CHAR_UUID_STR = "00002004-5374-6172-4b20-467574757265";
 
 const SPLASH_DURATION_MS = 2000;
 
@@ -34,7 +32,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
     private var _splashTimer as Timer.Timer?;
     private var _pendingError as Number;
     private var _powerMode as Number?;
-    private var _bleDebug as String;
     private var _serviceUuid as BluetoothLowEnergy.Uuid;
     private var _charUuid as BluetoothLowEnergy.Uuid;
 
@@ -46,7 +43,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
         _splashTimer = null;
         _pendingError = 0;
         _powerMode = null;
-        _bleDebug = "";
         _serviceUuid = BluetoothLowEnergy.stringToUuid(BATT_SERVICE_UUID_STR);
         _charUuid    = BluetoothLowEnergy.stringToUuid(BATT_SOC_CHAR_UUID_STR);
     }
@@ -63,10 +59,6 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
 
     function getPowerMode() as Number? {
         return _powerMode;
-    }
-
-    function getBleDebug() as String {
-        return _bleDebug;
     }
 
     function startSplash() as Void {
@@ -190,15 +182,10 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
                     _soc = soc > 100 ? 100 : soc;
                 }
             } else {
-                // Assume LiveMap characteristic (power mode, 1 byte)
+                // LiveMap characteristic — single byte, power mode 1-5
                 if (value.size() >= 1) {
                     var pm = value[0] & 0xFF;
                     _powerMode = (pm >= 1 && pm <= 5) ? pm : null;
-                    _bleDebug = (_powerMode != null)
-                        ? "P:M" + _powerMode.toString()
-                        : "P:raw=" + pm.toString();
-                } else {
-                    _bleDebug = "P:empty";
                 }
             }
             WatchUi.requestUpdate();
@@ -250,44 +237,30 @@ class BleManager extends BluetoothLowEnergy.BleDelegate {
             liveService = device.getService(
                 BluetoothLowEnergy.stringToUuid(LIVE_SERVICE_UUID_STR));
         } catch (e instanceof Lang.Exception) {
-            _bleDebug = "P:ex-svc";
             WatchUi.requestUpdate(); return;
         }
-        if (liveService == null) {
-            _bleDebug = "P:no-svc";
-            WatchUi.requestUpdate(); return;
-        }
+        if (liveService == null) { WatchUi.requestUpdate(); return; }
 
         var liveMapChar;
         try {
             liveMapChar = liveService.getCharacteristic(
                 BluetoothLowEnergy.stringToUuid(LIVE_MAP_CHAR_UUID_STR));
         } catch (e instanceof Lang.Exception) {
-            _bleDebug = "P:ex-chr";
             WatchUi.requestUpdate(); return;
         }
-        if (liveMapChar == null) {
-            _bleDebug = "P:no-chr";
-            WatchUi.requestUpdate(); return;
-        }
+        if (liveMapChar == null) { WatchUi.requestUpdate(); return; }
 
         var liveMapCccd;
         try {
             liveMapCccd = liveMapChar.getDescriptor(BluetoothLowEnergy.cccdUuid());
         } catch (e instanceof Lang.Exception) {
-            _bleDebug = "P:ex-ccd";
             WatchUi.requestUpdate(); return;
         }
-        if (liveMapCccd == null) {
-            _bleDebug = "P:no-ccd";
-            WatchUi.requestUpdate(); return;
-        }
+        if (liveMapCccd == null) { WatchUi.requestUpdate(); return; }
 
         try {
             liveMapCccd.requestWrite([0x01, 0x00]b);
-            _bleDebug = "P:sub";
         } catch (e instanceof Lang.Exception) {
-            _bleDebug = "P:ex-sub";
             WatchUi.requestUpdate();
         }
     }
