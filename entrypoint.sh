@@ -86,25 +86,26 @@ monkeyc \
     --override-devices-json "$DEVICES_DIR" \
     --warn
 
-# TYMCZASOWO wyłączone — wrócimy gdy fenix7pro będzie sprawdzony
-# echo 'const STARK_VARG_VIN = "UDUEX1AE7SA005907";' > /project/source/VinConfig.mc
-# monkeyc \
-#     -o "$OUTPUT_DIR/StarkBattery_KM.prg" \
-#     -f /project/monkey_km.jungle \
-#     -y "$KEY_FILE" \
-#     -d "instinct2" \
-#     --override-devices-json "$DEVICES_DIR" \
-#     --warn
+echo 'const STARK_VARG_VIN = "UDUEX1AE7SA005907";' > /project/source/VinConfig.mc
+monkeyc \
+    -o "$OUTPUT_DIR/StarkBattery_KM.prg" \
+    -f /project/monkey_km.jungle \
+    -y "$KEY_FILE" \
+    -d "instinct2" \
+    --override-devices-json "$DEVICES_DIR" \
+    --warn
 
-# echo 'const STARK_VARG_VIN = "UDUEX1AE9SA003348";' > /project/source/VinConfig.mc
-# monkeyc \
-#     -o "$OUTPUT_DIR/StarkBattery_MP.prg" \
-#     -f /project/monkey_mp.jungle \
-#     -y "$KEY_FILE" \
-#     -d "instinct3amoled50mm" \
-#     --override-devices-json "$DEVICES_DIR" \
-#     --warn
+echo 'const STARK_VARG_VIN = "UDUEX1AE9SA003348";' > /project/source/VinConfig.mc
+monkeyc \
+    -o "$OUTPUT_DIR/StarkBattery_MP.prg" \
+    -f /project/monkey_mp.jungle \
+    -y "$KEY_FILE" \
+    -d "instinct3amoled50mm" \
+    --override-devices-json "$DEVICES_DIR" \
+    --warn
 
 echo ""
 echo "Gotowe!"
-echo "  output/StarkBattery.prg   (VIN: UDUEX1AE8SA005799)"
+echo "  output/StarkBattery.prg    (VIN: UDUEX1AE8SA005799, fenix7pro)"
+echo "  output/StarkBattery_KM.prg (VIN: UDUEX1AE7SA005907, instinct2)"
+echo "  output/StarkBattery_MP.prg (VIN: UDUEX1AE9SA003348, instinct3amoled50mm)"
