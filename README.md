@@ -1,6 +1,6 @@
 # StarkBattery — Garmin Watch App
 
-Aplikacja na zegarki Garmin wyświetlająca stan baterii motocykla elektrycznego **Stark Varg** bezpośrednio na ekranie zegarka przez Bluetooth Low Energy — bez telefonu ani pośrednich serwisów.
+Aplikacja na zegarki Garmin wyświetlająca stan baterii i tryb jazdy motocykla elektrycznego **Stark Varg** bezpośrednio na ekranie zegarka przez Bluetooth Low Energy — bez telefonu ani pośrednich serwisów.
 
 Protokół BLE oparty na [svag-mini](https://github.com/b1naryth1ef/svag-mini).
 
@@ -35,7 +35,7 @@ Skrypt buduje wszystkie trzy warianty jednocześnie. Pliki `.prg` trafiają do `
 
 ## Wgrywanie na zegarek
 
-Przez **Garmin Express** lub sideloading (tryb deweloperski w zegarku).
+Przez **Garmin Express** (USB) lub **MTP** (przeciągnij `.prg` do folderu `GARMIN/APPS/` na zegarku).
 
 ---
 
@@ -52,13 +52,14 @@ Dostępne ID urządzeń Garmin: katalog `garmin-devices` w wolumenie Docker lub 
 
 ## Protokół BLE
 
-| Rola             | UUID                                   |
-|------------------|----------------------------------------|
-| Battery Service  | `00006000-5374-6172-4b20-467574757265` |
-| Battery SOC char | `00006004-5374-6172-4b20-467574757265` |
+| Rola              | UUID                                   | Format                        |
+|-------------------|----------------------------------------|-------------------------------|
+| Battery Service   | `00006000-5374-6172-4b20-467574757265` | —                             |
+| Battery SOC char  | `00006004-5374-6172-4b20-467574757265` | uint16 LE, 0–100 (%)          |
+| Live Service      | `00002000-5374-6172-4b20-467574757265` | —                             |
+| LiveMap char      | `00002004-5374-6172-4b20-467574757265` | uint8, tryb jazdy 1–5         |
 
-- Characteristic mode: **NOTIFY**
-- Format: uint16 little-endian (wartość 0–100, procenty)
+- Obie charakterystyki w trybie **NOTIFY** (subskrypcja przez CCCD)
 - UUID tworzone przez `BluetoothLowEnergy.stringToUuid()` — wymagane przez Connect IQ runtime
 
 ---
