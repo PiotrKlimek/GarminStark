@@ -25,10 +25,20 @@ class StarkVargApp extends Application.AppBase {
             // Profile may already be registered from a previous run — continue
         }
         try {
+            BluetoothLowEnergy.registerProfile({
+                :uuid => BluetoothLowEnergy.stringToUuid(LIVE_SERVICE_UUID_STR),
+                :characteristics => [{
+                    :uuid => BluetoothLowEnergy.stringToUuid(LIVE_MAP_CHAR_UUID_STR),
+                    :descriptors => [BluetoothLowEnergy.cccdUuid()]
+                }]
+            });
+        } catch (e instanceof Lang.Exception) {
+            // Profile may already be registered from a previous run — continue
+        }
+        try {
             BluetoothLowEnergy.setDelegate(bleManager);
         } catch (e instanceof Lang.Exception) {
-            bleManager.setDebugState(2);
-            bleManager.startSplash();
+            bleManager.setBleUnavailable();
             return;
         }
         bleManager.startSplash();

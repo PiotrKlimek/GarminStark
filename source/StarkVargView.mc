@@ -44,15 +44,11 @@ class StarkVargView extends WatchUi.View {
             return;
         }
 
-        // BLE unavailable — show error + debug code
+        // BLE unavailable
         if (state == STATE_BLE_UNAVAILABLE) {
             dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy - 15, Graphics.FONT_MEDIUM,
+            dc.drawText(cx, cy, Graphics.FONT_MEDIUM,
                         WatchUi.loadResource(Rez.Strings.BleUnavailable),
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + 20, Graphics.FONT_SMALL,
-                        "ERR:" + _bleManager.getSoc().toString(),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;
         }
@@ -70,26 +66,36 @@ class StarkVargView extends WatchUi.View {
 
         } else if (state == STATE_CONNECTED) {
             var soc = _bleManager.getSoc();
+            var powerMode = _bleManager.getPowerMode();
 
-            dc.drawText(cx, cy - 20, Graphics.FONT_NUMBER_HOT,
+            // SOC value — shifted up slightly to make room for mode line
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, cy - 30, Graphics.FONT_NUMBER_HOT,
                         soc.toString() + "%",
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
+            // Battery bar
             var barX = 20;
-            var barY = cy + 50;
+            var barY = cy + 35;
             var barMaxW = w - 40;
             var barH = 14;
 
-            // Bar background (dark grey)
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.fillRectangle(barX, barY, barMaxW, barH);
 
-            // Bar fill — green > 20%, red at 20% or below
             var barColor = soc > 20 ? Graphics.COLOR_GREEN : Graphics.COLOR_RED;
             var fillW = barMaxW * soc / 100;
             if (fillW < 1) { fillW = 1; }
             dc.setColor(barColor, Graphics.COLOR_TRANSPARENT);
             dc.fillRectangle(barX, barY, fillW, barH);
+
+            // Power mode
+            var modeStr = (powerMode != null) ? "M" + powerMode.toString() : "M?";
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, cy + 63, Graphics.FONT_MEDIUM,
+                        modeStr,
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
 
         } else if (state == STATE_RECONNECTING) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
