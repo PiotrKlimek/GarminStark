@@ -68,23 +68,29 @@ class DFBleDelegate extends BluetoothLowEnergy.BleDelegate {
 
     function onCharacteristicChanged(char as BluetoothLowEnergy.Characteristic,
                                      value as Lang.ByteArray) as Void {
-        if (value.size() < 2) {
-            System.println("[DF] notification too short (" + value.size() + " bytes) — skip");
-            return;
+        try {
+            if (value.size() < 1) {
+                System.println("[DF] notification empty — skip");
+                return;
+            }
+            var soc = value[0] & 0xFF;
+            if (value.size() >= 2) {
+                soc = soc | ((value[1] & 0xFF) << 8);
+            }
+            if (soc > 100) { soc = 100; }
+
+            var now = Time.now().value();
+            Application.Storage.setValue("df_soc", soc);
+            Application.Storage.setValue("df_soc_ts", now);
+            System.println("[DF] soc=" + soc + " ts=" + now);
+
+            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
+            // "CON" here means "last known state was connected + SOC read succeeded".
+            _svc.writeState("CON", "ok");
+        } catch (e instanceof Lang.Exception) {
+            System.println("[DF] exception in onCharacteristicChanged: " + e.getErrorMessage());
+            _svc.writeState("ERR", "chr-ex");
         }
-        System.println("[DF] notification raw=[" + value[0] + "," + value[1] + "]");
-
-        var soc = (value[0] & 0xFF) | ((value[1] & 0xFF) << 8);
-        if (soc > 100) { soc = 100; }
-
-        var now = Time.now().value();
-        Application.Storage.setValue("df_soc", soc);
-        Application.Storage.setValue("df_soc_ts", now);
-        System.println("[DF] soc=" + soc + " ts=" + now);
-
-        BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
-        // "CON" here means "last known state was connected + SOC read succeeded".
-        _svc.writeState("CON", "ok");
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
