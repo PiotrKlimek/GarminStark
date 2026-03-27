@@ -105,35 +105,6 @@ monkeyc \
 #     --override-devices-json "$DEVICES_DIR" \
 #     --warn
 
-echo 'const STARK_VARG_VIN = "UDUEX1AE8SA005799";' > /project/source-df/VinConfig.mc
-monkeyc \
-    -o "$OUTPUT_DIR/StarkBatteryDF.prg" \
-    -f /project/monkey_df.jungle \
-    -y "$KEY_FILE" \
-    -d "fenix7pro" \
-    --override-devices-json "$DEVICES_DIR" \
-    --warn
-
-# TYMCZASOWO wyłączone — wrócimy gdy fenix7pro będzie sprawdzony
-# echo 'const STARK_VARG_VIN = "UDUEX1AE7SA005907";' > /project/source-df/VinConfig.mc
-# monkeyc \
-#     -o "$OUTPUT_DIR/StarkBatteryDF_KM.prg" \
-#     -f /project/monkey_df_km.jungle \
-#     -y "$KEY_FILE" \
-#     -d "instinct2" \
-#     --override-devices-json "$DEVICES_DIR" \
-#     --warn
-
-# echo 'const STARK_VARG_VIN = "UDUEX1AE9SA003348";' > /project/source-df/VinConfig.mc
-# monkeyc \
-#     -o "$OUTPUT_DIR/StarkBatteryDF_MP.prg" \
-#     -f /project/monkey_df_mp.jungle \
-#     -y "$KEY_FILE" \
-#     -d "instinct3amoled50mm" \
-#     --override-devices-json "$DEVICES_DIR" \
-#     --warn
-
 echo ""
 echo "Gotowe!"
 echo "  output/StarkBattery.prg   (VIN: UDUEX1AE8SA005799)"
-echo "  output/StarkBatteryDF.prg (VIN: UDUEX1AE8SA005799)"
